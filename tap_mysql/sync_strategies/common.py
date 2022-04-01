@@ -70,7 +70,7 @@ def generate_select_sql(catalog_entry, columns):
 
         # fetch the column type format from the json schema already built
         property_format = catalog_entry.schema.properties[col_name].format
-
+        property_type = catalog_entry.schema.properties[col_name].type
         # if the column format is binary, fetch the values after removing any trailing
         # null bytes 0x00 and hexifying the column.
         if property_format == 'binary':
@@ -79,6 +79,11 @@ def generate_select_sql(catalog_entry, columns):
         elif property_format == 'spatial':
             escaped_columns.append(
                 f'ST_AsGeoJSON({escaped_col}) as {escaped_col}')
+        elif property_type[-1] == 'string' and property_format is None:
+            escaped_columns.append(
+                fr"replace(replace(replace({escaped_col},'\t','$[ht]'),'\n','$[nl]'),'\r','$[cr]') as {escaped_col}")
+        elif property_format == 'date-time':
+            escaped_columns.append(f"case when {escaped_col} <= str_to_date('0000-00-00','%Y-%m-%d') then NULL else {escaped_col} end  as {escaped_col}")
         else:
             escaped_columns.append(escaped_col)
 
